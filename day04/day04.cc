@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 
@@ -38,29 +39,16 @@ int main()
   int n2 = 0;
 
   string line;
-  string range;
-  string token;
   while (getline(input, line))
   {
-    vector<int> v;
-
-    stringstream ss;
-    ss << line;
-    while (getline(ss, range, ','))
-    {
-      stringstream s;
-      s << range;
-      while (getline(s, token, '-'))
-      {
-        v.push_back(stoi(token));
-      }
-    }
+    vector<string> v;
+    boost::split(v, line, boost::is_any_of("-,"));
 
     RangePair rp;
-    rp.first.lo = v[0];
-    rp.first.hi = v[1];
-    rp.second.lo = v[2];
-    rp.second.hi = v[3];
+    rp.first.lo = stoi(v[0]);
+    rp.first.hi = stoi(v[1]);
+    rp.second.lo = stoi(v[2]);
+    rp.second.hi = stoi(v[3]);
 
     if (rp.xContainsY())
     {
