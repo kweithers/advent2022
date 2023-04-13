@@ -15,41 +15,52 @@ struct Point
   auto operator<=>(const Point &) const = default;
 };
 
+int sign(int x)
+{
+  if (x > 0)
+    return 1;
+  if (x < 0)
+    return -1;
+  return 0;
+}
+
 struct Rope
 {
-  Point head, tail;
+  vector<Point> knots;
   set<Point> visited_points;
-  Rope()
+
+  Rope(int n)
   {
-    head = Point();
-    tail = Point();
-    visited_points.insert(tail);
+    for (auto i = 0; i < n; i++)
+      knots.emplace_back(Point());
+    visited_points.emplace(Point());
   }
 
-  bool head_and_tail_touching()
+  // Determines if two points are touching, diagonally counts!
+  bool touching(int head, int tail)
   {
-    int x_dist = abs(head.x - tail.x);
-    int y_dist = abs(head.y - tail.y);
+    int x_dist = abs(knots[head].x - knots[tail].x);
+    int y_dist = abs(knots[head].y - knots[tail].y);
     return x_dist < 2 && y_dist < 2;
   }
 
-  void move_head(char direction) // R, L, D, U
+  void move_head(char direction) // R, L, U, D
   {
     if (direction == 'R')
     {
-      head.x++;
+      knots[0].x++;
     }
     else if (direction == 'L')
     {
-      head.x--;
+      knots[0].x--;
     }
     else if (direction == 'U')
     {
-      head.y++;
+      knots[0].y++;
     }
     else if (direction == 'D')
     {
-      head.y--;
+      knots[0].y--;
     }
     else
     {
@@ -58,39 +69,33 @@ struct Rope
     }
   }
 
-  void move_tail(char direction) // If necessary!
+  void move_tail(int head, int tail) // If necessary!
   {
-    if (head_and_tail_touching())
-    {
+    if (touching(head, tail))
       return;
-    }
-    if (direction == 'R')
+    if (knots[head].x == knots[tail].x)
     {
-      tail.x = head.x - 1;
-      tail.y = head.y;
+      knots[tail].y += sign(knots[head].y - knots[tail].y);
     }
-    else if (direction == 'L')
+    else if (knots[head].y == knots[tail].y)
     {
-      tail.x = head.x + 1;
-      tail.y = head.y;
+      knots[tail].x += sign(knots[head].x - knots[tail].x);
     }
-    else if (direction == 'U')
+    else
     {
-      tail.x = head.x;
-      tail.y = head.y - 1;
-    }
-    else if (direction == 'D')
-    {
-      tail.x = head.x;
-      tail.y = head.y + 1;
+      knots[tail].y += sign(knots[head].y - knots[tail].y);
+      knots[tail].x += sign(knots[head].x - knots[tail].x);
     }
   }
 
   void move(char direction)
   {
     move_head(direction);
-    move_tail(direction);
-    visited_points.insert(tail);
+    for (auto i = 1; i < knots.size(); i++)
+    {
+      move_tail(i - 1, i);
+    }
+    visited_points.insert(knots[knots.size() - 1]);
   }
 };
 
@@ -99,20 +104,21 @@ int main()
   fstream input;
   input.open("input.txt");
 
-  Rope rope;
-  printf("Head: %d %d Tail: %d %d\n", rope.head.x, rope.head.y, rope.tail.x, rope.tail.y);
-
+  Rope rope1 = Rope(2);
+  Rope rope2 = Rope(10);
   string line;
   while (getline(input, line))
   {
     vector<string> v;
     boost::split(v, line, boost::is_any_of(" "));
-    cout << v[0] << v[1] << endl;
+
     for (int i = 0; i < stoi(v[1]); i++)
     {
-      rope.move(v[0].front());
-      printf("Head: %d %d Tail: %d %d\n", rope.head.x, rope.head.y, rope.tail.x, rope.tail.y);
+      rope1.move(v[0].front());
+      rope2.move(v[0].front());
     }
   }
-  printf("Part 1: %lu\n", rope.visited_points.size());
+
+  printf("Part 1: %lu\n", rope1.visited_points.size());
+  printf("Part 2: %lu\n", rope2.visited_points.size());
 }
