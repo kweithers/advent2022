@@ -33,6 +33,18 @@ struct ManyMonkeys
 {
   vector<Monkey> monkeys;
 
+  long solve()
+  {
+    vector<long> v;
+
+    for (int i = 0; i < monkeys.size(); i++)
+    {
+      v.push_back(monkeys[i].inspection_count);
+    }
+
+    sort(v.begin(), v.end(), greater<long>());
+    return v[0] * v[1];
+  }
   ManyMonkeys(string s) // Test example
   {
     deque<int> q0;
@@ -151,7 +163,7 @@ struct ManyMonkeys
 
     op4.operation = multiply;
     op4.old = true;
-    
+
     op5.operation = add;
     op5.old = false;
     op5.value = 8;
@@ -239,16 +251,15 @@ struct ManyMonkeys
     monkeys.push_back(m7);
   }
 
-  void RunRound()
+  void RunRound(bool part1)
   {
     for (int i = 0; i < monkeys.size(); i++)
     {
       int j_size = monkeys[i].items.size();
       for (int j = 0; j < j_size; j++)
       {
-        int value = monkeys[i].items.front();
+        long value = monkeys[i].items.front();
         monkeys[i].items.pop_front();
-        // cout << value;
 
         monkeys[i].inspection_count++;
 
@@ -275,21 +286,18 @@ struct ManyMonkeys
             value *= monkeys[i].operation.value;
           }
         }
-        // cout << " " << value;
-        // Divide it by three
-        value /= 3;
-        // cout << " " << value << endl;;
+
+        // Reduce
+        value = part1 ? value / 3 : value % (7 * 19 * 13 * 3 * 2 * 11 * 17 * 5);
 
         // Test and Throw it to next monkey
         if (value % monkeys[i].modulus == 0)
         {
           monkeys[monkeys[i].if_true_throw_to].items.push_back(value);
-          // cout << "Throwing " << value << "to " << monkeys[i].if_true_throw_to << endl;
         }
         else
         {
           monkeys[monkeys[i].if_false_throw_to].items.push_back(value);
-          // cout << "Throwing " << value << "to " << monkeys[i].if_false_throw_to << endl;
         }
       }
     }
@@ -299,17 +307,14 @@ struct ManyMonkeys
 int main()
 {
   ManyMonkeys part1 = ManyMonkeys();
+  ManyMonkeys part2 = ManyMonkeys();
 
-  for (auto i = 0; i < 20; i++)
-    part1.RunRound();
-
-  for (int i = 0; i < part1.monkeys.size(); i++)
+  for (auto r = 0; r < 10000; r++)
   {
-    cout << "Monkey " << i << " has inspected " << part1.monkeys[i].inspection_count << " items" << endl;
-    // for (int j = 0; j < part1.monkeys[i].items.size(); j++)
-    // {
-    //   cout << part1.monkeys[i].items[j] << " ";
-    // }
-    // cout << endl;
+    part1.RunRound(true);
+    part2.RunRound(false);
+    if (r == 19)
+      cout << "Part 1: " << part1.solve() << endl;
   }
+  cout << "Part 2: " << part2.solve() << endl;
 }
