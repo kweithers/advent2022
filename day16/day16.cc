@@ -5,6 +5,7 @@
 #include <compare>
 #include <set>
 #include <map>
+#include <bitset>
 #include <boost/algorithm/string.hpp>
 
 using namespace std;
@@ -90,44 +91,47 @@ DistMatrix floyd_warshall(Graph *g)
   return dm;
 }
 
-void dfs(Graph *g, string node, set<string> *visited_nodes, int *best, int *current, int *time, DistMatrix *dm)
+void dfs(Graph *g, string node, set<string> *visited_nodes, int *best, int *current, int *time, DistMatrix *dm, int total_time)
 {
-  // cout << *time << ' ' << node << endl;
   (*visited_nodes).insert(node);
   // Add total pressure released
   if (node != "AA")
   {
     (*time) += 1; // Takes 1 second to activate
-    if (*time > 30)
+    if (*time > total_time)
       return;
-    
-    // cout << (*g)[node].first <<  "current " << *current << " " << *time << endl;
-    (*current) += ((*g)[node].first * (30-(*time)));
-    (*best) = max(*best,*current);
-    // cout << "current " << *current << endl;
+
+    (*current) += ((*g)[node].first * (total_time - (*time)));
+    (*best) = max(*best, *current);
   }
 
   // Walk an edge
   for (auto kv : (*g))
   {
-    if (kv.first == node || (*dm).find(make_pair(node,kv.first)) == (*dm).end())
+    if (kv.first == node || (*dm).find(make_pair(node, kv.first)) == (*dm).end())
       continue;
-    int weight = (*dm)[make_pair(node,kv.first)];
+    int weight = (*dm)[make_pair(node, kv.first)];
 
-    // cout << *time << kv.first << weight << (*visited_nodes).count(kv.first) << endl;
     // if we can get there in time and we havent visited there yet (on this path)
-    if (*time + weight < 30 && ((*visited_nodes).count(kv.first) == 0))
+    if (*time + weight < total_time && ((*visited_nodes).count(kv.first) == 0))
     {
       (*time) += weight;
-      dfs(g, kv.first, visited_nodes, best, current, time, dm);
+      dfs(g, kv.first, visited_nodes, best, current, time, dm, total_time);
       (*time) -= weight;
     }
   }
 
   // Step back out of this node
-  (*current) -= (*g)[node].first * (30-*time);
+  (*current) -= (*g)[node].first * (total_time - *time);
   (*time) -= 1;
   (*visited_nodes).erase(node);
+}
+
+int find_best(Graph *g, set<string> *visited_nodes, DistMatrix *dm, int total_time)
+{
+  int best = 0, current = 0, time = 0;
+  dfs(g, "AA", visited_nodes, &best, &current, &time, dm, total_time);
+  return best;
 }
 
 int main()
@@ -139,48 +143,66 @@ int main()
   string line;
   while (getline(input, line))
   {
-  vector<string> v;
-  boost::split(v, line, boost::is_any_of(","));
-  set<Edge> edges;
-  for (int i = 2; i < v.size(); i++)
-    edges.emplace(v[i], 1);
+    vector<string> v;
+    boost::split(v, line, boost::is_any_of(","));
+    set<Edge> edges;
+    for (int i = 2; i < v.size(); i++)
+      edges.emplace(v[i], 1);
 
-  graph.emplace(v[0], make_pair(stoi(v[1]), edges));
+    graph.emplace(v[0], make_pair(stoi(v[1]), edges));
   }
 
   // Remove zero pressure nodes.
   Graph smol_graph;
   for (auto kv : graph)
   {
-  if (kv.second.first == 0 && kv.first != "AA")
-    continue; // Skip zero pressure nodes.
-  set<Edge> es;
-  set<string> visited_nodes;
-  visited_nodes.insert(kv.first);
-  create_edge_set(&visited_nodes, kv.first, &graph, &es, 1);
+    if (kv.second.first == 0 && kv.first != "AA")
+      continue; // Skip zero pressure nodes.
+    set<Edge> es;
+    set<string> visited_nodes;
+    visited_nodes.insert(kv.first);
+    create_edge_set(&visited_nodes, kv.first, &graph, &es, 1);
 
-  smol_graph.emplace(kv.first, make_pair(kv.second.first, es));
+    smol_graph.emplace(kv.first, make_pair(kv.second.first, es));
   }
 
-  // cout << smol_graph.size() << endl;
-  // for (Edge e : smol_graph["AA"].second)
-  // {
-  //   cout << e.dest << e.weight << endl;
-  // }
+  DistMatrix dm = floyd_warshall(&smol_graph);
 
   // Backtrack from "AA" starting node to find optimal path.
   // i.e. the path that releases the most pressure in 30 time steps.
-  set<string> visited_nodes;
-  int best = 0;
-  int current = 0;
-  int time = 0;
-  DistMatrix dm = floyd_warshall(&smol_graph);
-  dfs(&smol_graph, "AA", &visited_nodes, &best, &current, &time, &dm);
-  cout << "Part 1: " << best << endl;
-  // cout << "current " << current << endl;
+  set<string> visited_nodes = {};
+  cout << "Part 1: " << find_best(&smol_graph, &visited_nodes, &dm, 30) << endl;
 
-  // for (auto i : smol_graph)
-  // {
-  //   cout << dm[make_pair("AA", i.first)] << i.first << endl;
-  // }
+  // Part 2
+  // Just give both a starting visited_set with the nodes the other person is handling
+  vector<string> nodes;
+  for (auto kv : smol_graph)
+  {
+    if (kv.first != "AA")
+    {
+      nodes.emplace_back(kv.first);
+    }
+  }
+
+  int p2 = 0;
+  for (int i = 0; i < pow(2, 15) / 2; i++)
+  {
+    std::bitset<15> b(i);
+    set<string> set1;
+    set<string> set2;
+
+    for (int item = 0; item < 15; item++)
+    {
+      if (b[item] == 1)
+      {
+        set1.emplace(nodes[item]);
+      }
+      else
+      {
+        set2.emplace(nodes[item]);
+      }
+    }
+    p2 = max(p2, find_best(&smol_graph, &set1, &dm, 26) + find_best(&smol_graph, &set2, &dm, 26));
+  }
+  cout << "Part 2: " << p2 << endl;
 }
